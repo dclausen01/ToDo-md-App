@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kanban_core/kanban_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../providers/board_ops.dart';
 import '../providers/board_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/vault_provider.dart';
@@ -135,12 +136,16 @@ class _BoardScreen extends ConsumerWidget {
           }
           return BoardView(
             board: session.board,
-            onToggleCard: (card) =>
-                runBoardEdit(ref, context, (_) => card.toggleChecked()),
+            onToggleCard: (card) => runBoardEdit(
+                ref, context, ToggleCardOp.of(session.board, card)),
             onOpenCard: (card) => _openCard(context, ref, session, card),
             onLinkTap: (card, link) => _handleLink(context, ref, link),
             onMoveCard: (card, target, index) => runBoardEdit(
-                ref, context, (b) => b.moveCard(card, target, index: index)),
+                ref, context, MoveCardOp.of(session.board, card, target, index)),
+            onMoveToTop: (card) => _reorder(ref, context, session, card, 0),
+            onMoveToBottom: (card) => _reorder(ref, context, session, card, -1),
+            onDeleteCard: (card) => runBoardEdit(
+                ref, context, DeleteCardOp.of(session.board, card)),
             onAddToLane: (lane) => _quickAdd(context, ref, session, lane),
           );
         },
@@ -184,13 +189,21 @@ class _BoardScreen extends ConsumerWidget {
     await runBoardEdit(
       ref,
       context,
-      (b) => b.addCard(
-        result.lane,
+      AddCardOp(
+        laneTitle: result.lane.title,
         title: result.title.trim(),
         tags: result.tags,
         date: result.date,
       ),
     );
+  }
+
+  Future<void> _reorder(WidgetRef ref, BuildContext context,
+      BoardSession session, KanbanCard card, int index) async {
+    final lane = session.board.laneOf(card);
+    if (lane == null) return;
+    await runBoardEdit(
+        ref, context, MoveCardOp.of(session.board, card, lane, index));
   }
 
   Future<void> _openCard(BuildContext context, WidgetRef ref,

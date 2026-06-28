@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kanban_core/kanban_core.dart';
 
+import '../providers/board_ops.dart';
 import '../providers/board_provider.dart';
 import 'card_inline.dart';
 import 'save_helpers.dart';
@@ -78,10 +79,14 @@ class _CardEditorScreenState extends ConsumerState<CardEditorScreen>
     }
     final newText = _work.serialize();
     final laneChanged = !identical(_lane, widget.currentLane);
-    final ok = await runBoardEdit(ref, context, (b) {
-      widget.card.replaceRaw(newText);
-      if (laneChanged) b.moveCard(widget.card, _lane);
-    });
+    final board = ref.read(boardProvider).valueOrNull?.board;
+    if (board == null) return;
+    final op = ReplaceCardOp(
+      anchor: CardAnchor.of(board, widget.card),
+      newRawText: newText,
+      targetLaneTitle: laneChanged ? _lane.title : null,
+    );
+    final ok = await runBoardEdit(ref, context, op);
     if (ok && mounted) Navigator.pop(context);
   }
 
@@ -103,8 +108,10 @@ class _CardEditorScreenState extends ConsumerState<CardEditorScreen>
     );
     if (confirm != true) return;
     if (!mounted) return;
+    final board = ref.read(boardProvider).valueOrNull?.board;
+    if (board == null) return;
     final ok =
-        await runBoardEdit(ref, context, (b) => b.deleteCard(widget.card));
+        await runBoardEdit(ref, context, DeleteCardOp.of(board, widget.card));
     if (ok && mounted) Navigator.pop(context);
   }
 

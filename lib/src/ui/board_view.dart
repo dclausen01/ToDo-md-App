@@ -20,6 +20,9 @@ class BoardView extends StatelessWidget {
     required this.onOpenCard,
     required this.onLinkTap,
     required this.onMoveCard,
+    required this.onMoveToTop,
+    required this.onMoveToBottom,
+    required this.onDeleteCard,
     required this.onAddToLane,
   });
 
@@ -31,6 +34,9 @@ class BoardView extends StatelessWidget {
   /// Move [card] into [target] at card-position [index] (append if negative).
   final void Function(KanbanCard card, KanbanLane target, int index)
       onMoveCard;
+  final void Function(KanbanCard card) onMoveToTop;
+  final void Function(KanbanCard card) onMoveToBottom;
+  final void Function(KanbanCard card) onDeleteCard;
   final void Function(KanbanLane lane) onAddToLane;
 
   @override
@@ -45,6 +51,9 @@ class BoardView extends StatelessWidget {
         onOpenCard: onOpenCard,
         onLinkTap: onLinkTap,
         onMoveCard: onMoveCard,
+        onMoveToTop: onMoveToTop,
+        onMoveToBottom: onMoveToBottom,
+        onDeleteCard: onDeleteCard,
         onAddToLane: onAddToLane,
       ),
     );
@@ -58,6 +67,9 @@ class _LaneColumn extends StatelessWidget {
     required this.onOpenCard,
     required this.onLinkTap,
     required this.onMoveCard,
+    required this.onMoveToTop,
+    required this.onMoveToBottom,
+    required this.onDeleteCard,
     required this.onAddToLane,
   });
 
@@ -66,6 +78,9 @@ class _LaneColumn extends StatelessWidget {
   final void Function(KanbanCard card) onOpenCard;
   final void Function(KanbanCard card, CardLink link) onLinkTap;
   final void Function(KanbanCard card, KanbanLane target, int index) onMoveCard;
+  final void Function(KanbanCard card) onMoveToTop;
+  final void Function(KanbanCard card) onMoveToBottom;
+  final void Function(KanbanCard card) onDeleteCard;
   final void Function(KanbanLane lane) onAddToLane;
 
   @override
@@ -131,6 +146,9 @@ class _LaneColumn extends StatelessWidget {
                       onOpenCard: onOpenCard,
                       onLinkTap: onLinkTap,
                       onMoveCard: onMoveCard,
+                      onMoveToTop: onMoveToTop,
+                      onMoveToBottom: onMoveToBottom,
+                      onDeleteCard: onDeleteCard,
                     );
                   },
                 );
@@ -152,6 +170,9 @@ class _DraggableCard extends StatelessWidget {
     required this.onOpenCard,
     required this.onLinkTap,
     required this.onMoveCard,
+    required this.onMoveToTop,
+    required this.onMoveToBottom,
+    required this.onDeleteCard,
   });
 
   final KanbanCard card;
@@ -161,6 +182,9 @@ class _DraggableCard extends StatelessWidget {
   final void Function(KanbanCard card) onOpenCard;
   final void Function(KanbanCard card, CardLink link) onLinkTap;
   final void Function(KanbanCard card, KanbanLane target, int index) onMoveCard;
+  final void Function(KanbanCard card) onMoveToTop;
+  final void Function(KanbanCard card) onMoveToBottom;
+  final void Function(KanbanCard card) onDeleteCard;
 
   @override
   Widget build(BuildContext context) {
@@ -169,6 +193,9 @@ class _DraggableCard extends StatelessWidget {
       onToggle: () => onToggleCard(card),
       onTap: () => onOpenCard(card),
       onLinkTap: (link) => onLinkTap(card, link),
+      onMoveToTop: () => onMoveToTop(card),
+      onMoveToBottom: () => onMoveToBottom(card),
+      onDelete: () => onDeleteCard(card),
     );
 
     return DragTarget<_CardDrag>(
