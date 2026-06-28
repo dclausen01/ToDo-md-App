@@ -93,6 +93,39 @@ void main() {
     });
   });
 
+  group('subtasks', () {
+    test('addSubtask inserts after the last subtask', () {
+      final board = KanbanBoard.parse(_fixture());
+      final card = board.lanes[0].cards[2]; // has 2 subtasks
+      card.addSubtask('Third subtask');
+      final subs = card.subtasks;
+      expect(subs.length, 3);
+      expect(subs.last.text, 'Third subtask');
+      expect(subs.last.checked, isFalse);
+      // Card stays parseable as part of the board.
+      expect(KanbanBoard.parse(board.serialize()).lanes[0].cards[2].subtasks
+          .length, 3);
+    });
+
+    test('removeSubtask deletes only that line', () {
+      final board = KanbanBoard.parse(_fixture());
+      final card = board.lanes[0].cards[2];
+      final target = card.subtasks.first;
+      card.removeSubtask(target.lineIndex);
+      expect(card.subtasks.length, 1);
+    });
+
+    test('setSubtaskText keeps the checked state', () {
+      final board = KanbanBoard.parse(_fixture());
+      final card = board.lanes[0].cards[2];
+      final done = card.subtasks[0]; // checked
+      card.setSubtaskText(done.lineIndex, 'Renamed done');
+      final after = card.subtasks[0];
+      expect(after.text, 'Renamed done');
+      expect(after.checked, isTrue);
+    });
+  });
+
   group('move / add / delete', () {
     test('moving a card removes it from source and appends to target', () {
       final board = KanbanBoard.parse(_fixture());

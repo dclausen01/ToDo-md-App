@@ -108,6 +108,41 @@ class KanbanCard {
     return result;
   }
 
+  /// Appends a new subtask line to the card body, indented one level. It is
+  /// placed right after the last existing subtask, or at the end of the card.
+  void addSubtask(String text, {bool checked = false}) {
+    final line = '$indentUnit- [${checked ? 'x' : ' '}] $text$eol';
+    var insertAt = lines.length;
+    for (var i = lines.length - 1; i >= 1; i--) {
+      if (_subtaskRe.firstMatch(lineContent(lines[i])) != null) {
+        insertAt = i + 1;
+        break;
+      }
+    }
+    // Ensure the line before our insertion point ends with a newline.
+    if (insertAt > 0 && !lines[insertAt - 1].endsWith('\n')) {
+      lines[insertAt - 1] = lines[insertAt - 1] + eol;
+    }
+    lines.insert(insertAt, line);
+  }
+
+  /// Removes the subtask on line [lineIndex].
+  void removeSubtask(int lineIndex) {
+    if (lineIndex <= 0 || lineIndex >= lines.length) return;
+    if (_subtaskRe.firstMatch(lineContent(lines[lineIndex])) == null) return;
+    lines.removeAt(lineIndex);
+  }
+
+  /// Sets the text of the subtask on line [lineIndex], preserving its state.
+  void setSubtaskText(int lineIndex, String text) {
+    if (lineIndex <= 0 || lineIndex >= lines.length) return;
+    final content = lineContent(lines[lineIndex]);
+    final m = _subtaskRe.firstMatch(content);
+    if (m == null) return;
+    lines[lineIndex] =
+        '${m.group(1)}- [${m.group(2)}] $text${lineEol(lines[lineIndex])}';
+  }
+
   /// Toggles the checkbox of the subtask on line [lineIndex].
   void toggleSubtask(int lineIndex) {
     if (lineIndex <= 0 || lineIndex >= lines.length) return;

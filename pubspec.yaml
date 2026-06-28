@@ -1,0 +1,37 @@
+name: todo_md_app
+description: "Leichtgewichtige Android-App zum Lesen und Bearbeiten einer Obsidian Kanban ToDo.md."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Round-trip-safe Kanban parser/serializer (local package).
+  kanban_core:
+    path: packages/kanban_core
+
+  # State management.
+  flutter_riverpod: ^2.6.1
+
+  # Persist the vault tree URI, board path and small settings.
+  shared_preferences: ^2.3.2
+
+  # Open http(s) links and obsidian:// deep links.
+  url_launcher: ^6.3.1
+
+  # Render markdown in the linked-note preview.
+  markdown_widget: ^2.3.2+8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

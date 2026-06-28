@@ -1,6 +1,6 @@
 /// Round-trip-safe parsing, serialization and editing of Obsidian Kanban-plugin
 /// markdown boards. Pure Dart — usable from Flutter or command-line tools.
-library kanban_core;
+library;
 
 export 'src/board.dart';
 export 'src/card.dart';
