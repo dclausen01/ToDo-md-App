@@ -52,7 +52,10 @@ Future<bool> runBoardEdit(
     }
   } catch (e) {
     messenger.showSnackBar(
-      SnackBar(content: Text('Speichern fehlgeschlagen: $e')),
+      SnackBar(
+        content: Text('Speichern fehlgeschlagen: $e'),
+        duration: const Duration(seconds: 10),
+      ),
     );
     return false;
   }

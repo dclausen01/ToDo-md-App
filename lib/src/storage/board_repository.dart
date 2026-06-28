@@ -40,10 +40,19 @@ class BoardRepository {
         throw ExternalChangeException(onDisk);
       }
     }
-    if (onDisk != null) {
-      await _writeBackup(treeUri, path, onDisk);
-    }
+    // Write the real file FIRST — saving the user's data must never be blocked
+    // by a backup problem (e.g. a DocumentsProvider that refuses to create the
+    // hidden backup folder).
     await saf.writeFile(treeUri, path, content);
+
+    // Then keep a backup of the previous content, best-effort.
+    if (onDisk != null) {
+      try {
+        await _writeBackup(treeUri, path, onDisk);
+      } catch (_) {
+        // Backups are a safety net, not a precondition for saving.
+      }
+    }
   }
 
   String _baseName(String path) {
