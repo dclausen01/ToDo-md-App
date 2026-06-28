@@ -1,0 +1,35 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+**/doc/api/
+coverage/
+
+# Pure-Dart package lockfiles (resolved per-machine)
+packages/kanban_core/pubspec.lock
+
+# Android
+**/android/.gradle/
+**/android/captures/
+**/android/local.properties
+**/android/key.properties
+**/android/app/release/
+*.keystore
+*.jks
+**/*.iml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# App: never commit real vault data
+*.local.md
+sample_real_*.md
