@@ -100,11 +100,49 @@ class _OnboardingScreen extends ConsumerWidget {
   }
 }
 
-class _BoardScreen extends ConsumerWidget {
+class _BoardScreen extends ConsumerStatefulWidget {
   const _BoardScreen();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_BoardScreen> createState() => _BoardScreenState();
+}
+
+class _BoardScreenState extends ConsumerState<_BoardScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _maybeRefreshOnResume();
+  }
+
+  /// When returning to the app, silently pick up changes another device or
+  /// Obsidian may have written — but only while the board itself is on top
+  /// (not when the card editor, a note preview or the settings are open, so a
+  /// reload can't pull the rug out from under an in-progress edit).
+  Future<void> _maybeRefreshOnResume() async {
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return;
+    final changed = await ref.read(boardProvider.notifier).refreshIfChanged();
+    if (changed && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Von Festplatte aktualisiert')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final boardAsync = ref.watch(boardProvider);
     final settings = ref.watch(settingsProvider).valueOrNull;
 

@@ -72,6 +72,27 @@ class BoardController extends AsyncNotifier<BoardSession?> {
     ));
   }
 
+  /// Re-reads the board from disk only if it actually changed since it was
+  /// loaded, and replaces the in-memory board with the fresh version. Returns
+  /// true if a reload happened. Cheap no-op when nothing changed (keeps scroll
+  /// position and avoids needless rebuilds).
+  ///
+  /// Safe to call on app resume because the app auto-saves after every edit, so
+  /// there are never unsaved board-level changes to lose.
+  Future<bool> refreshIfChanged() async {
+    final session = state.valueOrNull;
+    if (session == null) return false;
+    final onDisk = await _repo.load(session.treeUri, session.boardPath);
+    if (onDisk == session.loadedContent) return false;
+    state = AsyncData(BoardSession(
+      board: KanbanBoard.parse(onDisk),
+      treeUri: session.treeUri,
+      boardPath: session.boardPath,
+      loadedContent: onDisk,
+    ));
+    return true;
+  }
+
   /// Applies [op] to the board, updates the UI optimistically, then saves.
   ///
   /// If the file changed on disk since it was loaded (e.g. Obsidian re-wrote
