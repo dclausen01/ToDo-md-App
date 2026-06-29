@@ -19,9 +19,12 @@ import java.io.ByteArrayOutputStream
 class MainActivity : FlutterActivity() {
 
     private val channelName = "de.clausen.todo_md_app/saf"
+    private val widgetChannelName = "de.clausen.todo_md_app/widget"
     private val openTreeRequest = 4201
 
     private var pendingPick: MethodChannel.Result? = null
+    private var widgetChannel: MethodChannel? = null
+    private var pendingLaunchAction: String? = null
     private val main = Handler(Looper.getMainLooper())
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -54,6 +57,36 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        widgetChannel =
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, widgetChannelName)
+        widgetChannel!!.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getLaunchAction" -> {
+                    val action = pendingLaunchAction
+                    pendingLaunchAction = null
+                    result.success(action)
+                }
+                else -> result.notImplemented()
+            }
+        }
+        captureLaunchAction(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        captureLaunchAction(intent)
+        // App was already running: push the quick-add request to Flutter now.
+        if (intent.action == QuickAddWidgetProvider.actionQuickAdd) {
+            widgetChannel?.invokeMethod("quickAdd", null)
+        }
+    }
+
+    private fun captureLaunchAction(intent: Intent?) {
+        if (intent?.action == QuickAddWidgetProvider.actionQuickAdd) {
+            pendingLaunchAction = "quick_add"
+        }
     }
 
     // ---- vault picking ----------------------------------------------------
