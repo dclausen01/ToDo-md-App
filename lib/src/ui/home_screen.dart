@@ -11,7 +11,7 @@ import 'board_view.dart';
 import 'card_editor_screen.dart';
 import 'card_inline.dart';
 import 'note_viewer_screen.dart';
-import 'quick_add_sheet.dart';
+import 'quick_add.dart';
 import 'save_helpers.dart';
 import 'settings_screen.dart';
 
@@ -161,41 +161,9 @@ class _BoardScreen extends ConsumerWidget {
     );
   }
 
-  KanbanLane _defaultLane(BoardSession session, AppSettings? settings) {
-    final title = settings?.defaultLaneTitle;
-    if (title != null) {
-      for (final lane in session.board.lanes) {
-        if (lane.title == title) return lane;
-      }
-    }
-    return session.board.lanes.first;
-  }
-
   Future<void> _quickAdd(BuildContext context, WidgetRef ref,
       BoardSession session, KanbanLane? lane) async {
-    if (session.board.lanes.isEmpty) return;
-    final settings = ref.read(settingsProvider).valueOrNull;
-    final target = lane ?? _defaultLane(session, settings);
-    final result = await showModalBottomSheet<QuickAddResult>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => QuickAddSheet(
-        lanes: session.board.lanes,
-        initialLane: target,
-      ),
-    );
-    if (result == null || result.title.trim().isEmpty) return;
-    if (!context.mounted) return;
-    await runBoardEdit(
-      ref,
-      context,
-      AddCardOp(
-        laneTitle: result.lane.title,
-        title: result.title.trim(),
-        tags: result.tags,
-        date: result.date,
-      ),
-    );
+    await showQuickAddFlow(context, ref, session, lane: lane);
   }
 
   Future<void> _reorder(WidgetRef ref, BuildContext context,
