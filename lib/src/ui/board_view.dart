@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kanban_core/kanban_core.dart';
 
+import '../providers/filter_provider.dart';
 import 'card_inline.dart';
 import 'card_tile.dart';
 
@@ -24,6 +25,7 @@ class BoardView extends StatelessWidget {
     required this.onMoveToBottom,
     required this.onDeleteCard,
     required this.onAddToLane,
+    this.filter = const BoardFilter(),
   });
 
   final KanbanBoard board;
@@ -38,6 +40,7 @@ class BoardView extends StatelessWidget {
   final void Function(KanbanCard card) onMoveToBottom;
   final void Function(KanbanCard card) onDeleteCard;
   final void Function(KanbanLane lane) onAddToLane;
+  final BoardFilter filter;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +50,7 @@ class BoardView extends StatelessWidget {
       itemCount: board.lanes.length,
       itemBuilder: (context, i) => _LaneColumn(
         lane: board.lanes[i],
+        filter: filter,
         onToggleCard: onToggleCard,
         onOpenCard: onOpenCard,
         onLinkTap: onLinkTap,
@@ -63,6 +67,7 @@ class BoardView extends StatelessWidget {
 class _LaneColumn extends StatelessWidget {
   const _LaneColumn({
     required this.lane,
+    required this.filter,
     required this.onToggleCard,
     required this.onOpenCard,
     required this.onLinkTap,
@@ -74,6 +79,7 @@ class _LaneColumn extends StatelessWidget {
   });
 
   final KanbanLane lane;
+  final BoardFilter filter;
   final void Function(KanbanCard card) onToggleCard;
   final void Function(KanbanCard card) onOpenCard;
   final void Function(KanbanCard card, CardLink link) onLinkTap;
@@ -86,7 +92,9 @@ class _LaneColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cards = lane.cards;
+    final allCards = lane.cards;
+    final cards =
+        filter.isActive ? allCards.where(filter.matches).toList() : allCards;
 
     return Container(
       width: 300,
@@ -110,7 +118,10 @@ class _LaneColumn extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Text('${cards.length}',
+                Text(
+                    filter.isActive
+                        ? '${cards.length}/${allCards.length}'
+                        : '${allCards.length}',
                     style: theme.textTheme.labelMedium
                         ?.copyWith(color: theme.hintColor)),
                 IconButton(
@@ -141,7 +152,6 @@ class _LaneColumn extends StatelessWidget {
                     return _DraggableCard(
                       card: card,
                       lane: lane,
-                      index: index,
                       onToggleCard: onToggleCard,
                       onOpenCard: onOpenCard,
                       onLinkTap: onLinkTap,
@@ -165,7 +175,6 @@ class _DraggableCard extends StatelessWidget {
   const _DraggableCard({
     required this.card,
     required this.lane,
-    required this.index,
     required this.onToggleCard,
     required this.onOpenCard,
     required this.onLinkTap,
@@ -177,7 +186,6 @@ class _DraggableCard extends StatelessWidget {
 
   final KanbanCard card;
   final KanbanLane lane;
-  final int index;
   final void Function(KanbanCard card) onToggleCard;
   final void Function(KanbanCard card) onOpenCard;
   final void Function(KanbanCard card, CardLink link) onLinkTap;
@@ -200,7 +208,10 @@ class _DraggableCard extends StatelessWidget {
 
     return DragTarget<_CardDrag>(
       onWillAcceptWithDetails: (d) => !identical(d.data.card, card),
-      onAcceptWithDetails: (d) => onMoveCard(d.data.card, lane, index),
+      // Use the card's real position in the full lane so drops land correctly
+      // even when the view is filtered.
+      onAcceptWithDetails: (d) =>
+          onMoveCard(d.data.card, lane, lane.cards.indexOf(card)),
       builder: (context, candidate, rejected) {
         return Column(
           children: [
