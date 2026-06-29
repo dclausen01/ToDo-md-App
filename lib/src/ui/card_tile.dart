@@ -109,7 +109,7 @@ class CardTile extends StatelessWidget {
                               dense: true,
                               contentPadding: EdgeInsets.zero,
                               leading: const Icon(Icons.check_circle_outline),
-                              title: Text('Nach „${doneLabel ?? 'Done'}“'),
+                              title: Text('Erledigt → „${doneLabel ?? 'Done'}“'),
                             ),
                           ),
                         const PopupMenuItem(

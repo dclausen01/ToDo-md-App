@@ -115,6 +115,31 @@ class MoveCardOp extends BoardOp {
   }
 }
 
+/// Marks a card done (`[x]`) and moves it to the top of the done lane — one
+/// atomic edit so it auto-merges as a single operation.
+class MoveToDoneOp extends BoardOp {
+  MoveToDoneOp(this.anchor, this.doneLaneTitle);
+  factory MoveToDoneOp.of(
+    KanbanBoard board,
+    KanbanCard card,
+    KanbanLane doneLane,
+  ) =>
+      MoveToDoneOp(CardAnchor.of(board, card), doneLane.title);
+
+  final CardAnchor anchor;
+  final String doneLaneTitle;
+
+  @override
+  bool apply(KanbanBoard board) {
+    final card = anchor.locate(board);
+    if (card == null) return false;
+    final target = _laneByTitle(board, doneLaneTitle);
+    if (target == null) return false;
+    card.checked = true;
+    return board.moveCard(card, target, index: 0);
+  }
+}
+
 class DeleteCardOp extends BoardOp {
   DeleteCardOp(this.anchor);
   factory DeleteCardOp.of(KanbanBoard board, KanbanCard card) =>

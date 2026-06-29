@@ -186,7 +186,7 @@ class _BoardScreenState extends ConsumerState<_BoardScreen>
             onMoveToDone: (card) {
               if (doneLane == null) return;
               runBoardEdit(ref, context,
-                  MoveCardOp.of(session.board, card, doneLane, 0));
+                  MoveToDoneOp.of(session.board, card, doneLane));
             },
             onAddToLane: (lane) => _quickAdd(context, ref, session, lane),
           );
