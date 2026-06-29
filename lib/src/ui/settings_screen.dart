@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/board_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/vault_provider.dart';
+import 'quick_add.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -14,6 +15,9 @@ class SettingsScreen extends ConsumerWidget {
     final board = ref.watch(boardProvider).valueOrNull;
     final laneTitles =
         board?.board.lanes.map((l) => l.title).toList() ?? const <String>[];
+    final autoDone = board == null
+        ? null
+        : resolveDoneLane(board.board, settings?.doneLaneTitle)?.title;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Einstellungen')),
@@ -50,6 +54,31 @@ class SettingsScreen extends ConsumerWidget {
                     hint: const Text('Erste'),
                     onChanged: (value) =>
                         ref.read(settingsProvider.notifier).setDefaultLane(value),
+                    items: [
+                      for (final t in laneTitles)
+                        DropdownMenuItem(
+                          value: t,
+                          child: Text(t, overflow: TextOverflow.ellipsis),
+                        ),
+                    ],
+                  ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.check_circle_outline),
+            title: const Text('„Done"-Liste'),
+            subtitle: Text(settings?.doneLaneTitle ??
+                (autoDone != null
+                    ? '$autoDone (automatisch erkannt)'
+                    : 'Keine erkannt')),
+            trailing: laneTitles.isEmpty
+                ? null
+                : DropdownButton<String>(
+                    value: laneTitles.contains(settings?.doneLaneTitle)
+                        ? settings?.doneLaneTitle
+                        : null,
+                    hint: const Text('Auto'),
+                    onChanged: (value) =>
+                        ref.read(settingsProvider.notifier).setDoneLane(value),
                     items: [
                       for (final t in laneTitles)
                         DropdownMenuItem(

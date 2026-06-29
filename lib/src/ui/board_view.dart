@@ -24,7 +24,9 @@ class BoardView extends StatelessWidget {
     required this.onMoveToTop,
     required this.onMoveToBottom,
     required this.onDeleteCard,
+    required this.onMoveToDone,
     required this.onAddToLane,
+    this.doneLane,
     this.filter = const BoardFilter(),
   });
 
@@ -39,6 +41,10 @@ class BoardView extends StatelessWidget {
   final void Function(KanbanCard card) onMoveToTop;
   final void Function(KanbanCard card) onMoveToBottom;
   final void Function(KanbanCard card) onDeleteCard;
+  final void Function(KanbanCard card) onMoveToDone;
+
+  /// The resolved "done" lane, or null if the board has none.
+  final KanbanLane? doneLane;
   final void Function(KanbanLane lane) onAddToLane;
   final BoardFilter filter;
 
@@ -51,6 +57,7 @@ class BoardView extends StatelessWidget {
       itemBuilder: (context, i) => _LaneColumn(
         lane: board.lanes[i],
         filter: filter,
+        doneLane: doneLane,
         onToggleCard: onToggleCard,
         onOpenCard: onOpenCard,
         onLinkTap: onLinkTap,
@@ -58,6 +65,7 @@ class BoardView extends StatelessWidget {
         onMoveToTop: onMoveToTop,
         onMoveToBottom: onMoveToBottom,
         onDeleteCard: onDeleteCard,
+        onMoveToDone: onMoveToDone,
         onAddToLane: onAddToLane,
       ),
     );
@@ -68,6 +76,7 @@ class _LaneColumn extends StatelessWidget {
   const _LaneColumn({
     required this.lane,
     required this.filter,
+    required this.doneLane,
     required this.onToggleCard,
     required this.onOpenCard,
     required this.onLinkTap,
@@ -75,11 +84,13 @@ class _LaneColumn extends StatelessWidget {
     required this.onMoveToTop,
     required this.onMoveToBottom,
     required this.onDeleteCard,
+    required this.onMoveToDone,
     required this.onAddToLane,
   });
 
   final KanbanLane lane;
   final BoardFilter filter;
+  final KanbanLane? doneLane;
   final void Function(KanbanCard card) onToggleCard;
   final void Function(KanbanCard card) onOpenCard;
   final void Function(KanbanCard card, CardLink link) onLinkTap;
@@ -87,6 +98,7 @@ class _LaneColumn extends StatelessWidget {
   final void Function(KanbanCard card) onMoveToTop;
   final void Function(KanbanCard card) onMoveToBottom;
   final void Function(KanbanCard card) onDeleteCard;
+  final void Function(KanbanCard card) onMoveToDone;
   final void Function(KanbanLane lane) onAddToLane;
 
   @override
@@ -152,6 +164,7 @@ class _LaneColumn extends StatelessWidget {
                     return _DraggableCard(
                       card: card,
                       lane: lane,
+                      doneLane: doneLane,
                       onToggleCard: onToggleCard,
                       onOpenCard: onOpenCard,
                       onLinkTap: onLinkTap,
@@ -159,6 +172,7 @@ class _LaneColumn extends StatelessWidget {
                       onMoveToTop: onMoveToTop,
                       onMoveToBottom: onMoveToBottom,
                       onDeleteCard: onDeleteCard,
+                      onMoveToDone: onMoveToDone,
                     );
                   },
                 );
@@ -175,6 +189,7 @@ class _DraggableCard extends StatelessWidget {
   const _DraggableCard({
     required this.card,
     required this.lane,
+    required this.doneLane,
     required this.onToggleCard,
     required this.onOpenCard,
     required this.onLinkTap,
@@ -182,10 +197,12 @@ class _DraggableCard extends StatelessWidget {
     required this.onMoveToTop,
     required this.onMoveToBottom,
     required this.onDeleteCard,
+    required this.onMoveToDone,
   });
 
   final KanbanCard card;
   final KanbanLane lane;
+  final KanbanLane? doneLane;
   final void Function(KanbanCard card) onToggleCard;
   final void Function(KanbanCard card) onOpenCard;
   final void Function(KanbanCard card, CardLink link) onLinkTap;
@@ -193,9 +210,13 @@ class _DraggableCard extends StatelessWidget {
   final void Function(KanbanCard card) onMoveToTop;
   final void Function(KanbanCard card) onMoveToBottom;
   final void Function(KanbanCard card) onDeleteCard;
+  final void Function(KanbanCard card) onMoveToDone;
 
   @override
   Widget build(BuildContext context) {
+    // Offer "move to done" only when there is a done lane and this card isn't
+    // already in it.
+    final showDone = doneLane != null && !identical(lane, doneLane);
     final tile = CardTile(
       card: card,
       onToggle: () => onToggleCard(card),
@@ -204,6 +225,8 @@ class _DraggableCard extends StatelessWidget {
       onMoveToTop: () => onMoveToTop(card),
       onMoveToBottom: () => onMoveToBottom(card),
       onDelete: () => onDeleteCard(card),
+      onMoveToDone: showDone ? () => onMoveToDone(card) : null,
+      doneLabel: showDone ? stripInlineMarkdown(doneLane!.title) : null,
     );
 
     return DragTarget<_CardDrag>(

@@ -10,6 +10,7 @@ class AppSettings {
     this.vaultName,
     this.boardPath = 'ToDo.md',
     this.defaultLaneTitle,
+    this.doneLaneTitle,
   });
 
   /// SAF tree URI of the Obsidian vault folder, or null if not yet chosen.
@@ -24,6 +25,10 @@ class AppSettings {
   /// Title of the lane new quick-add cards go into (null = first lane).
   final String? defaultLaneTitle;
 
+  /// Title of the "done" lane for the card menu's "move to done" action
+  /// (null = auto-detect a lane whose title contains done/erledigt/fertig).
+  final String? doneLaneTitle;
+
   bool get isConfigured => vaultTreeUri != null && vaultTreeUri!.isNotEmpty;
 
   AppSettings copyWith({
@@ -32,6 +37,8 @@ class AppSettings {
     String? boardPath,
     String? defaultLaneTitle,
     bool clearDefaultLane = false,
+    String? doneLaneTitle,
+    bool clearDoneLane = false,
   }) {
     return AppSettings(
       vaultTreeUri: vaultTreeUri ?? this.vaultTreeUri,
@@ -39,6 +46,8 @@ class AppSettings {
       boardPath: boardPath ?? this.boardPath,
       defaultLaneTitle:
           clearDefaultLane ? null : (defaultLaneTitle ?? this.defaultLaneTitle),
+      doneLaneTitle:
+          clearDoneLane ? null : (doneLaneTitle ?? this.doneLaneTitle),
     );
   }
 }
@@ -47,6 +56,7 @@ const _kVaultUri = 'vault_tree_uri';
 const _kVaultName = 'vault_name';
 const _kBoardPath = 'board_path';
 const _kDefaultLane = 'default_lane_title';
+const _kDoneLane = 'done_lane_title';
 
 /// Loads and persists [AppSettings].
 class SettingsController extends AsyncNotifier<AppSettings> {
@@ -58,6 +68,7 @@ class SettingsController extends AsyncNotifier<AppSettings> {
       vaultName: prefs.getString(_kVaultName),
       boardPath: prefs.getString(_kBoardPath) ?? 'ToDo.md',
       defaultLaneTitle: prefs.getString(_kDefaultLane),
+      doneLaneTitle: prefs.getString(_kDoneLane),
     );
   }
 
@@ -74,6 +85,11 @@ class SettingsController extends AsyncNotifier<AppSettings> {
       await prefs.setString(_kDefaultLane, s.defaultLaneTitle!);
     } else {
       await prefs.remove(_kDefaultLane);
+    }
+    if (s.doneLaneTitle != null) {
+      await prefs.setString(_kDoneLane, s.doneLaneTitle!);
+    } else {
+      await prefs.remove(_kDoneLane);
     }
   }
 
@@ -96,6 +112,15 @@ class SettingsController extends AsyncNotifier<AppSettings> {
     final next = laneTitle == null
         ? current.copyWith(clearDefaultLane: true)
         : current.copyWith(defaultLaneTitle: laneTitle);
+    state = AsyncData(next);
+    await _persist(next);
+  }
+
+  Future<void> setDoneLane(String? laneTitle) async {
+    final current = state.valueOrNull ?? const AppSettings();
+    final next = laneTitle == null
+        ? current.copyWith(clearDoneLane: true)
+        : current.copyWith(doneLaneTitle: laneTitle);
     state = AsyncData(next);
     await _persist(next);
   }

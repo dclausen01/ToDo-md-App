@@ -14,6 +14,8 @@ class CardTile extends StatelessWidget {
     required this.onMoveToTop,
     required this.onMoveToBottom,
     required this.onDelete,
+    this.onMoveToDone,
+    this.doneLabel,
     this.showCheckbox = true,
   });
 
@@ -24,6 +26,10 @@ class CardTile extends StatelessWidget {
   final VoidCallback onMoveToTop;
   final VoidCallback onMoveToBottom;
   final VoidCallback onDelete;
+
+  /// When non-null, the menu shows a "move to done lane" action.
+  final VoidCallback? onMoveToDone;
+  final String? doneLabel;
   final bool showCheckbox;
 
   @override
@@ -85,6 +91,8 @@ class CardTile extends StatelessWidget {
                       tooltip: 'Aktionen',
                       onSelected: (value) {
                         switch (value) {
+                          case 'done':
+                            onMoveToDone?.call();
                           case 'top':
                             onMoveToTop();
                           case 'bottom':
@@ -93,8 +101,18 @@ class CardTile extends StatelessWidget {
                             onDelete();
                         }
                       },
-                      itemBuilder: (context) => const [
-                        PopupMenuItem(
+                      itemBuilder: (context) => [
+                        if (onMoveToDone != null)
+                          PopupMenuItem(
+                            value: 'done',
+                            child: ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.check_circle_outline),
+                              title: Text('Nach „${doneLabel ?? 'Done'}“'),
+                            ),
+                          ),
+                        const PopupMenuItem(
                           value: 'top',
                           child: ListTile(
                             dense: true,
@@ -103,7 +121,7 @@ class CardTile extends StatelessWidget {
                             title: Text('Nach ganz oben'),
                           ),
                         ),
-                        PopupMenuItem(
+                        const PopupMenuItem(
                           value: 'bottom',
                           child: ListTile(
                             dense: true,
@@ -112,7 +130,7 @@ class CardTile extends StatelessWidget {
                             title: Text('Nach ganz unten'),
                           ),
                         ),
-                        PopupMenuItem(
+                        const PopupMenuItem(
                           value: 'delete',
                           child: ListTile(
                             dense: true,

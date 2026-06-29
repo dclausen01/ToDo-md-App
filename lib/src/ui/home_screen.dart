@@ -167,9 +167,12 @@ class _BoardScreenState extends ConsumerState<_BoardScreen>
           if (session == null) {
             return const Center(child: Text('Kein Board geladen.'));
           }
+          final doneLane =
+              resolveDoneLane(session.board, settings?.doneLaneTitle);
           return BoardView(
             board: session.board,
             filter: filter,
+            doneLane: doneLane,
             onToggleCard: (card) => runBoardEdit(
                 ref, context, ToggleCardOp.of(session.board, card)),
             onOpenCard: (card) => _openCard(context, ref, session, card),
@@ -180,6 +183,11 @@ class _BoardScreenState extends ConsumerState<_BoardScreen>
             onMoveToBottom: (card) => _reorder(ref, context, session, card, -1),
             onDeleteCard: (card) => runBoardEdit(
                 ref, context, DeleteCardOp.of(session.board, card)),
+            onMoveToDone: (card) {
+              if (doneLane == null) return;
+              runBoardEdit(ref, context,
+                  MoveCardOp.of(session.board, card, doneLane, 0));
+            },
             onAddToLane: (lane) => _quickAdd(context, ref, session, lane),
           );
         },

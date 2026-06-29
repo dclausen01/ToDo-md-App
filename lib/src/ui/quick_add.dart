@@ -52,3 +52,19 @@ KanbanLane defaultLaneFor(BoardSession session, AppSettings? settings) {
   }
   return session.board.lanes.first;
 }
+
+/// The "done" lane: the explicitly configured one, otherwise auto-detected by a
+/// title containing done/erledigt/fertig. Null if none can be found.
+KanbanLane? resolveDoneLane(KanbanBoard board, String? configuredTitle) {
+  if (configuredTitle != null) {
+    for (final lane in board.lanes) {
+      if (lane.title == configuredTitle) return lane;
+    }
+  }
+  const keys = ['done', 'erledigt', 'fertig'];
+  for (final lane in board.lanes) {
+    final t = lane.title.toLowerCase();
+    if (keys.any(t.contains)) return lane;
+  }
+  return null;
+}
