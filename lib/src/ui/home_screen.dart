@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/board_ops.dart';
 import '../providers/board_provider.dart';
+import '../providers/filter_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/vault_provider.dart';
 import 'board_view.dart';
@@ -109,6 +110,9 @@ class _BoardScreen extends ConsumerStatefulWidget {
 
 class _BoardScreenState extends ConsumerState<_BoardScreen>
     with WidgetsBindingObserver {
+  bool _searching = false;
+  final TextEditingController _searchCtrl = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -118,7 +122,14 @@ class _BoardScreenState extends ConsumerState<_BoardScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _stopSearch() {
+    setState(() => _searching = false);
+    _searchCtrl.clear();
+    ref.read(boardFilterProvider.notifier).setQuery('');
   }
 
   @override
@@ -145,26 +156,10 @@ class _BoardScreenState extends ConsumerState<_BoardScreen>
   Widget build(BuildContext context) {
     final boardAsync = ref.watch(boardProvider);
     final settings = ref.watch(settingsProvider).valueOrNull;
+    final filter = ref.watch(boardFilterProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(settings?.boardPath ?? 'ToDo.md'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Neu laden',
-            onPressed: () => ref.read(boardProvider.notifier).reload(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Einstellungen',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-            ),
-          ),
-        ],
-      ),
+      appBar: _buildAppBar(context, settings, boardAsync.valueOrNull, filter),
       body: boardAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => _BoardError(message: '$e'),
@@ -174,6 +169,7 @@ class _BoardScreenState extends ConsumerState<_BoardScreen>
           }
           return BoardView(
             board: session.board,
+            filter: filter,
             onToggleCard: (card) => runBoardEdit(
                 ref, context, ToggleCardOp.of(session.board, card)),
             onOpenCard: (card) => _openCard(context, ref, session, card),
@@ -196,6 +192,189 @@ class _BoardScreenState extends ConsumerState<_BoardScreen>
               icon: const Icon(Icons.add),
               label: const Text('Aufgabe'),
             ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context, AppSettings? settings,
+      BoardSession? session, BoardFilter filter) {
+    if (_searching) {
+      return AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _stopSearch,
+        ),
+        title: TextField(
+          controller: _searchCtrl,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Suchen …',
+            border: InputBorder.none,
+          ),
+          onChanged: (v) => ref.read(boardFilterProvider.notifier).setQuery(v),
+        ),
+        actions: [
+          if (_searchCtrl.text.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.clear),
+              tooltip: 'Leeren',
+              onPressed: () {
+                _searchCtrl.clear();
+                ref.read(boardFilterProvider.notifier).setQuery('');
+              },
+            ),
+        ],
+      );
+    }
+
+    final tagCount = filter.tags.length;
+    return AppBar(
+      title: Text(settings?.boardPath ?? 'ToDo.md'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.search),
+          tooltip: 'Suchen',
+          onPressed:
+              session == null ? null : () => setState(() => _searching = true),
+        ),
+        IconButton(
+          icon: tagCount > 0
+              ? Badge(label: Text('$tagCount'), child: const Icon(Icons.filter_list))
+              : const Icon(Icons.filter_list),
+          tooltip: 'Nach Tags filtern',
+          onPressed: session == null ? null : () => _showTagFilter(context, session),
+        ),
+        PopupMenuButton<String>(
+          onSelected: (v) {
+            switch (v) {
+              case 'reload':
+                ref.read(boardProvider.notifier).reload();
+              case 'settings':
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+            }
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(
+              value: 'reload',
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.refresh),
+                title: Text('Neu laden'),
+              ),
+            ),
+            PopupMenuItem(
+              value: 'settings',
+              child: ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.settings),
+                title: Text('Einstellungen'),
+              ),
+            ),
+          ],
+        ),
+      ],
+      bottom: filter.tags.isEmpty ? null : _activeTagsBar(context, filter),
+    );
+  }
+
+  PreferredSizeWidget _activeTagsBar(BuildContext context, BoardFilter filter) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(46),
+      child: SizedBox(
+        height: 46,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          children: [
+            for (final tag in filter.tags)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Center(
+                  child: InputChip(
+                    label: Text('#$tag'),
+                    onDeleted: () =>
+                        ref.read(boardFilterProvider.notifier).toggleTag(tag),
+                  ),
+                ),
+              ),
+            Center(
+              child: TextButton(
+                onPressed: () =>
+                    ref.read(boardFilterProvider.notifier).clearTags(),
+                child: const Text('Alle löschen'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showTagFilter(BuildContext context, BoardSession session) async {
+    final allTags =
+        session.board.allCards.expand((c) => c.tags).toSet().toList()..sort();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => Consumer(
+        builder: (context, ref, _) {
+          final selected = ref.watch(boardFilterProvider).tags;
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text('Nach Tags filtern',
+                          style: Theme.of(context).textTheme.titleLarge),
+                      const Spacer(),
+                      if (selected.isNotEmpty)
+                        TextButton(
+                          onPressed: () => ref
+                              .read(boardFilterProvider.notifier)
+                              .clearTags(),
+                          child: const Text('Zurücksetzen'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (allTags.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Text('Keine Tags im Board gefunden.'),
+                    )
+                  else
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            for (final tag in allTags)
+                              FilterChip(
+                                label: Text('#$tag'),
+                                selected: selected.contains(tag),
+                                onSelected: (_) => ref
+                                    .read(boardFilterProvider.notifier)
+                                    .toggleTag(tag),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
