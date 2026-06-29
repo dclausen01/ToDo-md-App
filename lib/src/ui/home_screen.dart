@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kanban_core/kanban_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../providers/board_ops.dart';
 import '../providers/board_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/vault_provider.dart';
@@ -10,7 +11,7 @@ import 'board_view.dart';
 import 'card_editor_screen.dart';
 import 'card_inline.dart';
 import 'note_viewer_screen.dart';
-import 'quick_add_sheet.dart';
+import 'quick_add.dart';
 import 'save_helpers.dart';
 import 'settings_screen.dart';
 
@@ -173,12 +174,16 @@ class _BoardScreenState extends ConsumerState<_BoardScreen>
           }
           return BoardView(
             board: session.board,
-            onToggleCard: (card) =>
-                runBoardEdit(ref, context, (_) => card.toggleChecked()),
+            onToggleCard: (card) => runBoardEdit(
+                ref, context, ToggleCardOp.of(session.board, card)),
             onOpenCard: (card) => _openCard(context, ref, session, card),
             onLinkTap: (card, link) => _handleLink(context, ref, link),
             onMoveCard: (card, target, index) => runBoardEdit(
-                ref, context, (b) => b.moveCard(card, target, index: index)),
+                ref, context, MoveCardOp.of(session.board, card, target, index)),
+            onMoveToTop: (card) => _reorder(ref, context, session, card, 0),
+            onMoveToBottom: (card) => _reorder(ref, context, session, card, -1),
+            onDeleteCard: (card) => runBoardEdit(
+                ref, context, DeleteCardOp.of(session.board, card)),
             onAddToLane: (lane) => _quickAdd(context, ref, session, lane),
           );
         },
@@ -194,41 +199,17 @@ class _BoardScreenState extends ConsumerState<_BoardScreen>
     );
   }
 
-  KanbanLane _defaultLane(BoardSession session, AppSettings? settings) {
-    final title = settings?.defaultLaneTitle;
-    if (title != null) {
-      for (final lane in session.board.lanes) {
-        if (lane.title == title) return lane;
-      }
-    }
-    return session.board.lanes.first;
-  }
-
   Future<void> _quickAdd(BuildContext context, WidgetRef ref,
       BoardSession session, KanbanLane? lane) async {
-    if (session.board.lanes.isEmpty) return;
-    final settings = ref.read(settingsProvider).valueOrNull;
-    final target = lane ?? _defaultLane(session, settings);
-    final result = await showModalBottomSheet<QuickAddResult>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => QuickAddSheet(
-        lanes: session.board.lanes,
-        initialLane: target,
-      ),
-    );
-    if (result == null || result.title.trim().isEmpty) return;
-    if (!context.mounted) return;
+    await showQuickAddFlow(context, ref, session, lane: lane);
+  }
+
+  Future<void> _reorder(WidgetRef ref, BuildContext context,
+      BoardSession session, KanbanCard card, int index) async {
+    final lane = session.board.laneOf(card);
+    if (lane == null) return;
     await runBoardEdit(
-      ref,
-      context,
-      (b) => b.addCard(
-        result.lane,
-        title: result.title.trim(),
-        tags: result.tags,
-        date: result.date,
-      ),
-    );
+        ref, context, MoveCardOp.of(session.board, card, lane, index));
   }
 
   Future<void> _openCard(BuildContext context, WidgetRef ref,

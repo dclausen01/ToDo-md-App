@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:kanban_core/kanban_core.dart';
 
+import '../providers/board_ops.dart';
 import '../providers/board_provider.dart';
 import '../storage/board_repository.dart';
 
-/// Applies [action] to the board and persists it, handling the case where the
-/// file changed on disk (e.g. edited in Obsidian) by asking the user whether to
-/// overwrite or reload. Returns true if the edit ended up saved.
+/// Applies [op] to the board and persists it. External changes (e.g. Obsidian
+/// re-writing the file) are auto-merged inside [BoardController.applyOp]; only a
+/// genuine same-card conflict reaches the reload/overwrite prompt here. Returns
+/// true if the edit ended up saved.
 Future<bool> runBoardEdit(
   WidgetRef ref,
   BuildContext context,
-  void Function(KanbanBoard board) action,
+  BoardOp op,
 ) async {
   final controller = ref.read(boardProvider.notifier);
   final messenger = ScaffoldMessenger.of(context);
   try {
-    await controller.mutate(action);
+    await controller.applyOp(op);
     return true;
   } on ExternalChangeException {
     if (!context.mounted) return false;

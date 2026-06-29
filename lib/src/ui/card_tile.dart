@@ -11,6 +11,9 @@ class CardTile extends StatelessWidget {
     required this.onToggle,
     required this.onTap,
     required this.onLinkTap,
+    required this.onMoveToTop,
+    required this.onMoveToBottom,
+    required this.onDelete,
     this.showCheckbox = true,
   });
 
@@ -18,6 +21,9 @@ class CardTile extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onTap;
   final void Function(CardLink link) onLinkTap;
+  final VoidCallback onMoveToTop;
+  final VoidCallback onMoveToBottom;
+  final VoidCallback onDelete;
   final bool showCheckbox;
 
   @override
@@ -68,6 +74,54 @@ class CardTile extends StatelessWidget {
                               : theme.textTheme.titleSmall?.color,
                         ),
                       ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: PopupMenuButton<String>(
+                      padding: EdgeInsets.zero,
+                      iconSize: 18,
+                      tooltip: 'Aktionen',
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'top':
+                            onMoveToTop();
+                          case 'bottom':
+                            onMoveToBottom();
+                          case 'delete':
+                            onDelete();
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(
+                          value: 'top',
+                          child: ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(Icons.vertical_align_top),
+                            title: Text('Nach ganz oben'),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'bottom',
+                          child: ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(Icons.vertical_align_bottom),
+                            title: Text('Nach ganz unten'),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(Icons.delete_outline),
+                            title: Text('Löschen'),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

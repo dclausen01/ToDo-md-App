@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'ui/home_screen.dart';
+import 'ui/root_screen.dart';
 
 class TodoMdApp extends StatelessWidget {
   const TodoMdApp({super.key});
@@ -21,7 +21,7 @@ class TodoMdApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: const RootScreen(),
     );
   }
 }

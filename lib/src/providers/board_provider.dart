@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kanban_core/kanban_core.dart';
 
 import '../storage/board_repository.dart';
+import 'board_ops.dart';
 import 'settings_provider.dart';
 
 /// In-memory state of the currently loaded board.
@@ -92,18 +93,55 @@ class BoardController extends AsyncNotifier<BoardSession?> {
     return true;
   }
 
-  /// Applies [action] to the board, updates the UI optimistically, then saves.
+  /// Applies [op] to the board, updates the UI optimistically, then saves.
   ///
-  /// Throws [ExternalChangeException] if the file changed on disk; the in-memory
-  /// edit is kept so the caller can offer "reload" (discard) or "overwrite"
-  /// ([forceSave]).
-  Future<void> mutate(void Function(KanbanBoard board) action) async {
+  /// If the file changed on disk since it was loaded (e.g. Obsidian re-wrote
+  /// it), the edit is auto-merged: the fresh on-disk version is re-read and
+  /// [op] is re-applied onto it, preserving both the external change and the
+  /// user's edit. Only if the edit can no longer be located on the fresh board
+  /// (a genuine same-card conflict) is [ExternalChangeException] thrown, so the
+  /// caller can offer "reload" / "overwrite".
+  Future<void> applyOp(BoardOp op) async {
     final session = state.valueOrNull;
     if (session == null) return;
-    action(session.board);
+    if (!op.apply(session.board)) return;
     // Optimistic UI refresh.
     state = AsyncData(session.copyWith(revision: session.revision + 1));
-    await _persist(session);
+
+    final newContent = session.board.serialize();
+    try {
+      await _repo.save(
+        session.treeUri,
+        session.boardPath,
+        newContent,
+        loadedContent: session.loadedContent,
+      );
+      state = AsyncData(session.copyWith(
+        loadedContent: newContent,
+        revision: session.revision + 2,
+      ));
+    } on ExternalChangeException catch (e) {
+      // Re-apply our single operation onto the fresh on-disk version.
+      final fresh = KanbanBoard.parse(e.onDiskContent);
+      if (!op.apply(fresh)) {
+        rethrow; // genuine conflict — let the caller ask the user
+      }
+      final merged = fresh.serialize();
+      await _repo.save(
+        session.treeUri,
+        session.boardPath,
+        merged,
+        loadedContent: e.onDiskContent,
+        force: true,
+      );
+      state = AsyncData(BoardSession(
+        board: fresh,
+        treeUri: session.treeUri,
+        boardPath: session.boardPath,
+        loadedContent: merged,
+        revision: session.revision + 2,
+      ));
+    }
   }
 
   Future<void> _persist(BoardSession session, {bool force = false}) async {
